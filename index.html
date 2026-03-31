@@ -44,7 +44,7 @@ select:hover,select:focus,input:focus{border-color:var(--accent);}
 input[type=text]::placeholder,input[type=number]::placeholder{color:var(--text3);}
 .range-row{display:grid;grid-template-columns:1fr 1fr;gap:5px;}.range-row input{background-image:none;}
 .reset-btn{width:100%;padding:8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;transition:all .2s;}.reset-btn:hover{border-color:var(--accent);color:var(--accent);}
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px;margin-bottom:20px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:11px;margin-bottom:20px;}
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s;}.kpi-card:hover{transform:translateY(-2px);border-color:var(--accent);}
 .kpi-card.clickable{cursor:pointer;}.kpi-card.clickable:hover{box-shadow:0 4px 20px rgba(230,57,70,0.2);}
 .kpi-card.active-filter{border-color:var(--card-accent,var(--accent));box-shadow:0 0 0 2px var(--card-accent,var(--accent));background:var(--surface2);}
@@ -198,7 +198,7 @@ tbody td{padding:7px 10px;font-size:12px;white-space:nowrap;max-width:155px;over
   </div>
   <div class="header-right">
     <div class="live-badge">GOOGLE SHEETS LIVE</div>
-    <div class="total-badge"><span id="shown-reps">—</span> reps · <span id="shown-count">—</span> visits</div>
+    <div class="total-badge"><span id="shown-reps">—</span> reps · <span id="shown-ridealongs">—</span> ride-alongs · <span id="shown-count">—</span> visits</div>
   </div>
 </header>
 <div class="sync-bar">
@@ -221,6 +221,7 @@ tbody td{padding:7px 10px;font-size:12px;white-space:nowrap;max-width:155px;over
         <label class="filter-label">Quick Range</label>
         <div class="date-quickpicks">
           <button class="qp-btn active" id="qp-all" onclick="setQuickPick('all')">All</button>
+          <button class="qp-btn" id="qp-year" onclick="setQuickPick('year')">This Year</button>
           <button class="qp-btn" id="qp-month" onclick="setQuickPick('month')">This Month</button>
           <button class="qp-btn" id="qp-last" onclick="setQuickPick('last')">Last Month</button>
         </div>
@@ -265,6 +266,7 @@ tbody td{padding:7px 10px;font-size:12px;white-space:nowrap;max-width:155px;over
         <div class="kpi-card" style="--card-accent:var(--accent)"><div class="kpi-label">Total Visits</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">filtered records</div></div>
         <div class="kpi-card" style="--card-accent:#a78bfa"><div class="kpi-label">Sales Reps</div><div class="kpi-value" id="kpi-reps">—</div><div class="kpi-sub">with ride-alongs</div></div>
         <div class="kpi-card" style="--card-accent:#38bdf8"><div class="kpi-label">Customers Visited</div><div class="kpi-value" id="kpi-customers">—</div><div class="kpi-sub">unique accounts</div></div>
+        <div class="kpi-card" style="--card-accent:#f4a261"><div class="kpi-label">Ride-Alongs</div><div class="kpi-value" id="kpi-ridealongs">—</div><div class="kpi-sub">unique rep · day pairs</div></div>
         <div class="kpi-card clickable" id="kpicard-opened" style="--card-accent:var(--green)" onclick="kpiFilter('kpicard-opened','Opened During Visit','Yes')"><div class="kpi-label">Accounts Opened</div><div class="kpi-value" id="kpi-opened">—</div><div class="kpi-sub" id="kpi-opened-pct">—</div><div class="kpi-click-hint">▶ click to filter</div></div>
         <div class="kpi-card clickable" id="kpicard-had" style="--card-accent:#06d6a0" onclick="kpiFilter('kpicard-had','Already Eshop Account','Yes')"><div class="kpi-label">Had Account</div><div class="kpi-value" id="kpi-had">—</div><div class="kpi-sub" id="kpi-had-pct">—</div><div class="kpi-click-hint">▶ click to filter</div></div>
         <div class="kpi-card clickable" id="kpicard-app" style="--card-accent:var(--blue)" onclick="kpiFilter('kpicard-app','App Engaged','Yes')"><div class="kpi-label">App Engaged</div><div class="kpi-value" id="kpi-app">—</div><div class="kpi-sub" id="kpi-app-pct">—</div><div class="kpi-click-hint">▶ click to filter</div></div>
@@ -313,6 +315,7 @@ tbody td{padding:7px 10px;font-size:12px;white-space:nowrap;max-width:155px;over
         <div class="table-wrap">
           <table class="rep-table"><thead><tr>
             <th onclick="sortRep('name')">Sales Rep</th>
+            <th onclick="sortRep('ridealongs')">Ride-Alongs</th>
             <th onclick="sortRep('visits')" class="rep-sort-desc">Visits</th>
             <th onclick="sortRep('opened')">Opened</th>
             <th onclick="sortRep('app')">App</th>
@@ -367,7 +370,7 @@ function updateFilterBadge(){
 async function fetchLive(){
   setStatus('loading','<span class="spinner"></span> Fetching from Google Sheets…');
   try{
-    const r=await fetch(SCRIPT_URL+'?action=data');
+    const r=await fetch(SCRIPT_URL+'?action=data',{redirect:'follow'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
     if(d.error) throw new Error(d.error);
@@ -494,6 +497,9 @@ function updateKPIs(){
   document.getElementById('kpi-high-int').textContent=highInt;document.getElementById('kpi-high-int-pct').textContent=pct(highInt,n)+' of visits';
   document.getElementById('shown-count').textContent=n.toLocaleString();
   document.getElementById('shown-reps').textContent=repsCount;
+  const ridealongs=[...new Set(filtered.map(r=>r['Sales Rep']&&r['Date']?r['Sales Rep']+'|'+r['Date']:'').filter(Boolean))].length;
+  document.getElementById('kpi-ridealongs').textContent=ridealongs;
+  document.getElementById('shown-ridealongs').textContent=ridealongs;
 }
 
 // ── KPI CARD CLICK FILTER ─────────────────────────────────────────────────
@@ -536,6 +542,11 @@ function setQuickPick(mode){
   if(mode==='all'){
     document.getElementById('filter-date-from').value='';
     document.getElementById('filter-date-to').value='';
+  } else if(mode==='year'){
+    const from=new Date(now.getFullYear(),0,1);
+    const to=new Date(now.getFullYear(),11,31);
+    document.getElementById('filter-date-from').value=fmt(from);
+    document.getElementById('filter-date-to').value=fmt(to);
   } else if(mode==='month'){
     const from=new Date(now.getFullYear(),now.getMonth(),1);
     const to=new Date(now.getFullYear(),now.getMonth()+1,0);
@@ -666,7 +677,7 @@ function filterByRep(repName){
 function sortRep(col){
   if(repSortCol===col) repSortDir*=-1; else{repSortCol=col;repSortDir=col==='name'?1:-1;}
   document.querySelectorAll('.rep-table th').forEach(th=>th.classList.remove('rep-sort-asc','rep-sort-desc'));
-  const cols=['name','visits','opened','app','highInt','highFU','eproc','avg','sr'];
+  const cols=['name','ridealongs','visits','opened','app','highInt','highFU','eproc','avg','sr'];
   const idx=cols.indexOf(col);
   if(idx>=0)document.querySelectorAll('.rep-table th')[idx].classList.add(repSortDir===1?'rep-sort-asc':'rep-sort-desc');
   renderRepTable();
@@ -681,7 +692,8 @@ function renderRepTable(){
     const ep=v.filter(r=>r['Opportunity Type']==='e-Procurement').length;
     const sc=v.map(r=>+r['Potential Score']).filter(s=>s>0);
     const avg=sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):0,sr=n?Math.round((opened+hI)/n*100):0;
-    return{name:rep,visits:n,opened,app,highInt:hI,highFU:hFU,eproc:ep,avg,sr};
+    const ra=[...new Set(v.map(r=>r['Date']).filter(Boolean))].length;
+    return{name:rep,ridealongs:ra,visits:n,opened,app,highInt:hI,highFU:hFU,eproc:ep,avg,sr};
   });
   repData.sort((a,b)=>{
     let va=a[repSortCol],vb=b[repSortCol];
@@ -692,6 +704,7 @@ function renderRepTable(){
   document.getElementById('rep-tbody').innerHTML=repData.map(d=>{
     return`<tr style="cursor:pointer" onclick="filterByRep('${d.name.replace(/'/g,"\\'")}')">
       <td style="font-weight:600">${d.name}</td>
+      <td style="text-align:center;font-weight:700;color:#f4a261">${d.ridealongs}</td>
       <td style="text-align:center;font-weight:700;color:var(--text)">${d.visits}</td>
       <td style="text-align:center"><span style="color:var(--green);font-weight:600">${d.opened}</span><span style="color:var(--text3);font-size:10px"> (${d.visits?Math.round(d.opened/d.visits*100):0}%)</span></td>
       <td style="text-align:center">${d.app}</td>
@@ -703,7 +716,7 @@ function renderRepTable(){
     </tr>`;}).join('');
   // update header sort indicators - default is visits desc
   document.querySelectorAll('.rep-table th').forEach(th=>th.classList.remove('rep-sort-asc','rep-sort-desc'));
-  const cols=['name','visits','opened','app','highInt','highFU','eproc','avg','sr'];
+  const cols=['name','ridealongs','visits','opened','app','highInt','highFU','eproc','avg','sr'];
   const idx=cols.indexOf(repSortCol);
   if(idx>=0)document.querySelectorAll('.rep-table th')[idx].classList.add(repSortDir===1?'rep-sort-asc':'rep-sort-desc');
 }
